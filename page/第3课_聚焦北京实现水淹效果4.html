@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第3课_聚焦北京实现水淹效果</title>
+    <script src="../lib/Cesium/Cesium.js"></script>
+    <link rel="stylesheet" href="../lib/Cesium/Widgets/widgets.css">
+    <style>
+        html,body{
+            margin: 0;
+            padding: 0;
+        }
+        #地图容器{
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="地图容器"></div>
+</body>
+<script>
+    Cesium.Ion.defaultAccessToken ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYmVlYWZlYy0yNDY4LTRmY2YtOTY3My02ZjJlMDRmM2VjZWEiLCJpZCI6MjI0OTY0LCJpYXQiOjE3MTk0NzcxODZ9.TxwPk0Wl-pRo9RU8h_-KCPigN1yVej-gIjDO9LgOivg'; 
+
+
+           // Initialize Cesium Viewer
+           const viewer = new Cesium.Viewer('地图容器', {
+            terrainProvider: Cesium.createWorldTerrain(),
+            animation: true,
+            timeline: true
+        });
+
+        // Function to set view to user's current location
+        function setViewToCurrentLocation(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            viewer.camera.setView({
+                destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, 10000),
+                orientation: {
+                    heading: Cesium.Math.toRadians(0.0),
+                    pitch: Cesium.Math.toRadians(-45.0),
+                    roll: 0.0
+                }
+            });
+
+            // Define the start and end times for the water rise
+            const startTime = Cesium.JulianDate.now();
+            const endTime = Cesium.JulianDate.addDays(startTime, 3, new Cesium.JulianDate());
+
+            viewer.clock.startTime = startTime.clone();
+            viewer.clock.stopTime = endTime.clone();
+            viewer.clock.currentTime = startTime.clone();
+            viewer.clock.clockRange = Cesium.ClockRange.CLAMPED;
+            viewer.clock.multiplier = 1;
+
+            // Create a sampled property to represent the height of the water
+            const waterHeight = new Cesium.SampledProperty(Number);
+            waterHeight.addSample(startTime, 0);
+            waterHeight.addSample(endTime, 500);
+
+            // Create the water entity
+            const waterEntity = viewer.entities.add({
+                name: 'Dynamic Water',
+                polygon: {
+                    hierarchy: Cesium.Cartesian3.fromDegreesArray([
+                        longitude - 0.01, latitude - 0.01,
+                        longitude + 0.01, latitude - 0.01,
+                        longitude + 0.01, latitude + 0.01,
+                        longitude - 0.01, latitude + 0.01
+                    ]),
+                    height: new Cesium.CallbackProperty(() => waterHeight.getValue(viewer.clock.currentTime), false),
+                    extrudedHeight: new Cesium.CallbackProperty(() => waterHeight.getValue(viewer.clock.currentTime), false),
+                    material: new Cesium.ColorMaterialProperty(Cesium.Color.BLUE.withAlpha(0.5))
+                }
+            });
+
+            viewer.zoomTo(waterEntity);
+        }
+
+        // Get the user's current position
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(setViewToCurrentLocation, function (error) {
+                console.error("Error getting location: ", error);
+                alert("Unable to retrieve your location.");
+            });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+</script>
+</html>

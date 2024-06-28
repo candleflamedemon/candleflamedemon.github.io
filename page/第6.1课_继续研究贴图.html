@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第6.1课_继续研究贴图</title>
+    <script src="../lib/Cesium/Cesium.js"></script>
+    <link rel="stylesheet" href="../lib/Cesium/Widgets/widgets.css">
+    <style>
+        html,
+        body,
+        #cesiumContainer {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #controlPanel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(42, 42, 42, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1;
+            color: white;
+        }
+
+        #controlPanel button {
+            display: block;
+            width: 100px;
+            margin-bottom: 5px;
+        }
+
+        #controlPanel input {
+            width: 90px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="cesiumContainer"></div>
+    <div id="controlPanel">
+        <input type="number" id="heightControl" placeholder="Target Height (m)" value="500">
+        <input type="number" id="speedControl" placeholder="Speed (m/s)" value="1">
+        <button id="raiseWater">Raise Water</button>
+        <button id="lowerWater">Lower Water</button>
+    </div>
+    <script>
+        Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYmVlYWZlYy0yNDY4LTRmY2YtOTY3My02ZjJlMDRmM2VjZWEiLCJpZCI6MjI0OTY0LCJpYXQiOjE3MTk0NzcxODZ9.TxwPk0Wl-pRo9RU8h_-KCPigN1yVej-gIjDO9LgOivg';
+
+
+        // Initialize Cesium Viewer
+        const 地图视图 = new Cesium.Viewer('cesiumContainer', {
+            terrainProvider: Cesium.createWorldTerrain(),
+            //添加地形效果（效果一般）
+            // terrainProvider: new Cesium.CesiumTerrainProvider(
+            //     {
+            //         url:Cesium.IonResource.fromAssetId(1),
+            //         requestVertexNormals:true,//增加地形特效
+            //         requestWaterMask:true,//增加水面特效
+            //     }
+            // ),
+            animation: true,
+            timeline: true
+        });
+
+        //添加建筑物
+        var 建筑物集合 = 地图视图.scene.primitives.add(
+            new Cesium.Cesium3DTileset({
+                url: Cesium.IonResource.fromAssetId(96188)
+            })
+        );
+        //修改建筑物样式
+        //失败
+        // 建筑物集合.style = new Cesium.Cesium3DTileset({
+        //     color:"color('red',0.5)",
+        //     show: true
+        // })
+        // 建筑物集合.material = Cesium.Color.RED;
+        //成功
+        建筑物集合.style = new Cesium.Cesium3DTileStyle({
+            color: "color('cyan')"
+        });
+
+        // Variables to manage water height and control states
+        let 当前水位 = -100;
+        let 目标水位 = 500;
+        let 水位上升开关 = false;
+        let 水位下降开关 = false;
+        var 最大限制高度 = 500;
+        var 水体厚度 = 100; // Thickness of the water
+
+        // Function to set view to user's current location
+        function 视图聚焦用户当前位置(position) {
+            const 纬度 = position.coords.latitude;
+            const 经度 = position.coords.longitude;
+            地图视图.camera.setView({
+                //相机位置
+                destination: Cesium.Cartesian3.fromDegrees(经度, 纬度, 1000),
+                //相机朝向（x,y,z）三向
+                orientation: {
+                    heading: Cesium.Math.toRadians(0.0),
+                    pitch: Cesium.Math.toRadians(-45.0),
+                    roll: 0.0
+                }
+            });
+
+            //创建水体立方体
+            const 水体 = 地图视图.entities.add({
+                name: 'Dynamic Water',
+                polygon: {
+                    hierarchy: Cesium.Cartesian3.fromDegreesArray([
+                        经度 - 1, 纬度 - 1,
+                        经度 + 1, 纬度 - 1,
+                        经度 + 1, 纬度 + 1,
+                        经度 - 1, 纬度 + 1
+                    ]),
+                    height: new Cesium.CallbackProperty(() => 当前水位, false),
+                    extrudedHeight: new Cesium.CallbackProperty(() => 当前水位 + 水体厚度, false),
+                    material: new Cesium.ImageMaterialProperty({
+                        image: 'https://cesium.com/downloads/cesiumjs/releases/1.89/Build/Cesium/Assets/Textures/waterNormals.jpg',
+                        transparent: true,
+                        //color: Cesium.Color.BLUE.withAlpha(0.5),//注意贴图与颜色可能冲突
+                        repeat: new Cesium.Cartesian2(10, 10)
+                    })
+
+                }
+            });
+
+            //viewer.zoomTo(水体);
+
+            // Event listeners for buttons
+            document.getElementById('raiseWater').addEventListener('click', () => {
+                水位上升开关 = !水位上升开关;
+                if (水位上升开关) {
+                    水位下降开关 = false;
+                }
+            });
+
+            document.getElementById('lowerWater').addEventListener('click', () => {
+                水位下降开关 = !水位下降开关;
+                if (水位下降开关) {
+                    水位上升开关 = false;
+                }
+            });
+
+            // Update loop
+            地图视图.clock.onTick.addEventListener(() => {
+                const 水位上升速度 = parseFloat(document.getElementById('speedControl').value) || 1;
+                //目标水位 = parseFloat(document.getElementById('heightControl').value) || 最大限制高度;
+                目标水位 = parseFloat(document.getElementById('heightControl').value);
+
+                if (水位上升开关 && 当前水位 < 目标水位) {
+                    当前水位 = Math.min(当前水位 + 水位上升速度, 目标水位);
+                    水体厚度 = 当前水位;
+                } else if (水位下降开关 && 当前水位 > -500) {
+                    当前水位 = Math.max(当前水位 - 水位上升速度, 0);
+                    水体厚度 = 当前水位;
+                }
+            });
+        }
+
+        // 获取当前位置_反馈是否可以正常获取
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(视图聚焦用户当前位置, function (error) {
+                console.error("获取位置失败！: ", error);
+                alert("无法检索您的位置！");
+            });
+        } else {
+            alert("此浏览器不支持地理定位或未授权定位！");
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cesium with Water Effect</title>
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.89/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.89/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <style>
+        html, body, #cesiumContainer {
+            width: 100%; 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="cesiumContainer"></div>
+    <script>
+        // Initialize Cesium Viewer
+        const viewer = new Cesium.Viewer('cesiumContainer', {
+            terrainProvider: Cesium.createWorldTerrain(),
+            animation: false,
+            timeline: false
+        });
+
+        // Set the initial view to Beijing
+        viewer.camera.setView({
+            destination : Cesium.Cartesian3.fromDegrees(116.397128, 39.916527, 10000), // Beijing coordinates
+            orientation: {
+                heading: Cesium.Math.toRadians(0.0),
+                pitch: Cesium.Math.toRadians(-45.0),
+                roll: 0.0
+            }
+        });
+
+        // Define water material
+        const waterMaterial = new Cesium.Material({
+            fabric: {
+                type: 'Water',
+                uniforms: {
+                    baseWaterColor: new Cesium.Color(0.0, 0.5, 0.8, 0.5),
+                    blendColor: new Cesium.Color(0.0, 0.5, 0.8, 0.5),
+                    specularMap: '/path/to/specularMap.png',
+                    normalMap: '/path/to/normalMap.png',
+                    frequency: 1000.0,
+                    animationSpeed: 0.01,
+                    amplitude: 10.0
+                }
+            }
+        });
+
+        // Add water effect
+        const waterEntity = viewer.entities.add({
+            name: 'Water',
+            polygon: {
+                hierarchy: Cesium.Cartesian3.fromDegreesArray([
+                    116.386, 39.907,
+                    116.406, 39.907,
+                    116.406, 39.927,
+                    116.386, 39.927
+                ]),
+                material: waterMaterial
+            }
+        });
+
+        viewer.zoomTo(waterEntity);
+    </script>
+</body>
+</html>

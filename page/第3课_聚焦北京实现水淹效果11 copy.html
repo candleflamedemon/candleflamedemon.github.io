@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第3课_聚焦北京实现水淹效果</title>
+    <script src="../lib/Cesium/Cesium.js"></script>
+    <link rel="stylesheet" href="../lib/Cesium/Widgets/widgets.css">
+    <style>
+        html, body, #cesiumContainer {
+            width: 100%; 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden;
+        }
+        #controlPanel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+        }
+        #controlPanel button {
+            display: block;
+            width: 100px;
+            margin-bottom: 5px;
+        }
+        #controlPanel input {
+            width: 90px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="cesiumContainer"></div>
+    <div id="controlPanel">
+        <input type="number" id="heightControl" placeholder="Target Height (m)" value="500">
+        <input type="number" id="speedControl" placeholder="Speed (m/s)" value="1">
+        <button id="raiseWater">Raise Water</button>
+        <button id="lowerWater">Lower Water</button>
+    </div>
+    <script>
+        Cesium.Ion.defaultAccessToken ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYmVlYWZlYy0yNDY4LTRmY2YtOTY3My02ZjJlMDRmM2VjZWEiLCJpZCI6MjI0OTY0LCJpYXQiOjE3MTk0NzcxODZ9.TxwPk0Wl-pRo9RU8h_-KCPigN1yVej-gIjDO9LgOivg'; 
+
+
+        // Initialize Cesium Viewer
+        const viewer = new Cesium.Viewer('cesiumContainer', {
+            terrainProvider: Cesium.createWorldTerrain(),
+            animation: true,
+            timeline: true
+        });
+
+        // Variables to manage water height and control states
+        let currentWaterHeight = -500;
+        let targetWaterHeight = 500;
+        let isRaising = false;
+        let isLowering = false;
+        var maxHeight = 500;
+        var waterThickness = 500; // Thickness of the water
+
+        // Function to set view to user's current location
+        function setViewToCurrentLocation(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            viewer.camera.setView({
+                destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, 10000),
+                orientation: {
+                    heading: Cesium.Math.toRadians(0.0),
+                    pitch: Cesium.Math.toRadians(-45.0),
+                    roll: 0.0
+                }
+            });
+
+            // Create the water entity with water material
+            const waterEntity = viewer.entities.add({
+                name: 'Dynamic Water',
+                polygon: {
+                    hierarchy: Cesium.Cartesian3.fromDegreesArray([
+                        longitude - 0.01, latitude - 0.01,
+                        longitude + 0.01, latitude - 0.01,
+                        longitude + 0.01, latitude + 0.01,
+                        longitude - 0.01, latitude + 0.01
+                    ]),
+                    height: new Cesium.CallbackProperty(() => currentWaterHeight, false),
+                    extrudedHeight: new Cesium.CallbackProperty(() => currentWaterHeight + waterThickness, false),
+                    material: new Cesium.ImageMaterialProperty({
+                        image: 'https://cesium.com/downloads/cesiumjs/releases/1.89/Build/Cesium/Assets/Textures/waterNormals.jpg',
+                        transparent: true,
+                        color: Cesium.Color.BLUE.withAlpha(0.5),
+                        repeat: new Cesium.Cartesian2(10, 10)
+                    })
+                }
+            });
+
+            viewer.zoomTo(waterEntity);
+
+            // Event listeners for buttons
+            document.getElementById('raiseWater').addEventListener('click', () => {
+                isRaising = !isRaising;
+                if (isRaising) {
+                    isLowering = false;
+                }
+            });
+
+            document.getElementById('lowerWater').addEventListener('click', () => {
+                isLowering = !isLowering;
+                if (isLowering) {
+                    isRaising = false;
+                }
+            });
+
+            // Update loop
+            viewer.clock.onTick.addEventListener(() => {
+                const speed = parseFloat(document.getElementById('speedControl').value) || 1;
+                targetWaterHeight = parseFloat(document.getElementById('heightControl').value) || maxHeight;
+
+                if (isRaising && currentWaterHeight < targetWaterHeight) {
+                    currentWaterHeight = Math.min(currentWaterHeight + speed, targetWaterHeight);
+                } else if (isLowering && currentWaterHeight > 0) {
+                    currentWaterHeight = Math.max(currentWaterHeight - speed, 0);
+                }
+            });
+        }
+
+        // Get the user's current position
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(setViewToCurrentLocation, function (error) {
+                console.error("Error getting location: ", error);
+                alert("Unable to retrieve your location.");
+            });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第1课_显示三维地球模型</title>
+    <script src="../lib/Cesium/Cesium.js"></script>
+    <link rel="stylesheet" href="../lib/Cesium/Widgets/widgets.css">
+    <style>
+        html,body{
+            margin: 0;
+            padding: 0;
+        }
+        #地图容器{
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="地图容器"></div>
+</body>
+<script>
+    Cesium.Ion.defaultAccessToken ='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYmVlYWZlYy0yNDY4LTRmY2YtOTY3My02ZjJlMDRmM2VjZWEiLCJpZCI6MjI0OTY0LCJpYXQiOjE3MTk0NzcxODZ9.TxwPk0Wl-pRo9RU8h_-KCPigN1yVej-gIjDO9LgOivg'; 
+    var Viewer = Cesium.Viewer('地图容器');
+    
+    
+</script>
+</html>
